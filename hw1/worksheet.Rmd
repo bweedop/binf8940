@@ -19,56 +19,101 @@ fi
 
 1. How many genes do you have in the gff file?
 
-```{bash}
-cat CryptoDB-50_CparvumIOWA-ATCC.gff | cut -f3 | grep -v "#" | grep -c "gene"
+```{r, echo=FALSE}
+nGenes <- as.numeric(system('cat CryptoDB-50_CparvumIOWA-ATCC.gff | cut -f3 | grep -v "#" | grep -c "gene"', intern=TRUE))
 ```
+    - `r nGenes`
 
 2. How many CDS?
 
-```{bash}
-cat CryptoDB-50_CparvumIOWA-ATCC.gff | cut -f3 | grep -v "#" | grep -c "CDS"
+```{r, echo=FALSE}
+nCds <- as.numeric(system('cat CryptoDB-50_CparvumIOWA-ATCC.gff | cut -f3 | grep -v "#" | grep -c "CDS"', intern=TRUE))
 ```
+    - `r nCds`
 
 3. How many exons?
 
-```{bash}
-cat CryptoDB-50_CparvumIOWA-ATCC.gff | cut -f3 | grep -v "#" | grep -c "exon"
+```{r, echo=FALSE}
+nExon <- as.numeric(system('cat CryptoDB-50_CparvumIOWA-ATCC.gff | cut -f3 | grep -v "#" | grep -c "exon"', intern=TRUE))
 ```
+
+    - `r nExon`
 
 4. How many ncRNA (ribosomal RNAs, tRNAs, etc.)?
 
-5. How many of each?
-
-```{bash}
+```{bash, echo=FALSE}
 ncDnaNames=("tRNA" "rRNA" "five_prime_UTR" "three_prime_UTR" "snRNA")
 nNcDna=0
+touch .ncDnaData
 
 for i in ${!ncDnaNames[@]}
 do
-  echo "Number of ${ncDnaNames[$i]}: "
+  # echo "Number of ${ncDnaNames[$i]}: "
+  # Get number of current type and put it into hidden file for R retrieval
   nTmp=$(cat CryptoDB-50_CparvumIOWA-ATCC.gff | cut -f3 | grep -v "#" | grep -c ${ncDnaNames[$i]})
-  echo $nTmp
+  echo $nTmp >> .ncDnaData
+  # Increment total ncDNA amount by amount of current type
   nNcDna=$((nNcDna+nTmp))
 done
 
-echo "Total number of ncDNA: "
-echo $nNcDna
+# echo "Total number of ncDNA: "
+echo $nNcDna >> .ncDnaData
+```
+
+```{r, echo=FALSE}
+ncDnaData <- readLines(".ncDnaData")
+system("rm .ncDnaData")
+```
+    - `r ncDnaData[length(ncDnaData)]`
+
+5. How many of each?
+
+```{r, echo=FALSE, results='asis'}
+ncDnaNames <- c("tRNA", "rRNA", "five_prime_UTR", "three_prime_UTR", "snRNA")
+for (i in 1:length(ncDnaNames)) {
+  # Doing this to get the output to go straight into markdown
+  cat("\t - ", ncDnaNames[i], ": ", ncDnaData[i], "\n", sep="")
+}
 ```
 
 6. How many genes by Chromosome?
 
-```{bash}
+```{bash, echo=FALSE}
 chroms=($(cat CryptoDB-50_CparvumIOWA-ATCC.gff | cut -f1 | grep -v "#" | sort | uniq))
 for chrom in "${chroms[@]}"
 do
   nChrom=$(cat CryptoDB-50_CparvumIOWA-ATCC.gff | cut -f1-3 | grep -v "#" | grep "gene" | grep -c "$chrom")
-  echo "${chrom}: $nChrom"
+  echo "${chrom}: $nChrom" >> .byChromData
 done
+```
+
+```{r, echo=FALSE, results='asis'}
+byChromData <- readLines(".byChromData")
+system("rm .byChromData")
+for (i in byChromData) {
+  # Doing this to get the output to go straight into markdown
+  cat(paste("\t - ", i, "\n", sep = ""))
+}
 ```
 
 7. How many genes have a product name?
 
+```{r, echo=FALSE}
+nHaveProductName <- system('cat CryptoDB-50_CparvumIOWA-ATCC.gff | grep "description" | grep -v "unspecified product" | grep -v "Uncharacterized" | wc -l', intern=TRUE)
+```
+    - `r nHaveProductName`
+
 8. How many are Uncharacterized or Hypothetical?
 
+```{r, echo=FALSE, warning=FALSE, results='asis'}
+nUnchar <- as.numeric(system('cat CryptoDB-50_CparvumIOWA-ATCC.gff | grep -c "Uncharacterized"', intern=TRUE))
+nHypo <- as.numeric(system('cat CryptoDB-50_CparvumIOWA-ATCC.gff | grep -c "[Hh]ypothetical"', intern=TRUE))
+cat(paste0("\t - ", nUnchar + nHypo, "\n"))
+```
+
 9. What is the ID/Name of the last gene in CpIOWA-ATCC_Chr1?
-    - CPATCC_0039550
+
+```{r, echo=FALSE, results="asis"}
+lastGene <- system("cat CryptoDB-50_CparvumIOWA-ATCC.gff | grep 'CpIOWA-ATCC_Chr1' | grep 'gene' | cut -f4,9 | sort -n | cut -f2 | tail -n 1", intern=TRUE)
+cat(paste0("\t - ", strsplit(lastGene, split=";")[[1]][1], "\n"))
+```
